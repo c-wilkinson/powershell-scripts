@@ -1,2 +1,14 @@
-# powershell-scripts
-A collection of python scripts I've written for various purposes
+# PowerShell Scripts
+A personal collection of PowerShell scripts for solving annoyances, automating repetitive tasks, and experimenting with new ideas.  
+Some are polished, some are quick hacks - all are here because they proved useful at least once.
+
+---
+
+## Contents
+
+| Script                        | Description |
+|------------------------------|-------------|
+| [`create-test-db.ps1`](create-test-db.ps1)        | Automates setup of a SQL Server 2022 Docker container, waits for readiness, and runs an init script to create a schema with users, products, and orders tables plus supporting indexes, views, and procs. |
+
+---
+These scripts are provided as-is. There's no hand-holding. If something here helps you, feel free to adapt and reuse however you like.

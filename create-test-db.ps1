@@ -163,6 +163,26 @@ AS BEGIN
  ORDER BY Spend DESC;
 END');
 
+-- NUMBERS TABLE
+IF OBJECT_ID('dbo.Numbers') IS NOT NULL 
+  DROP TABLE dbo.Numbers
+
+PRINT 'Populating numbers table';
+SELECT TOP 10000000
+    IDENTITY(INT,1,1) AS N
+INTO dbo.Numbers
+FROM master.dbo.syscolumns sc1
+CROSS JOIN master.dbo.syscolumns sc2
+CROSS JOIN master.dbo.syscolumns sc3
+CROSS JOIN master.dbo.syscolumns sc4
+CROSS JOIN master.dbo.syscolumns sc5;
+
+PRINT 'Numbers table populated, add primary key';
+ALTER TABLE dbo.Numbers ADD CONSTRAINT PK_Numbers_N PRIMARY KEY CLUSTERED (N) WITH FILLFACTOR = 100;
+
+PRINT 'Grant permissions';
+GRANT SELECT, REFERENCES ON dbo.Numbers TO PUBLIC;
+
 PRINT 'Test data ready.';
 GO
 '@ | Set-Content -Encoding UTF8 $tmp.FullName

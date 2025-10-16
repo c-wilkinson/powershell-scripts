@@ -9,10 +9,50 @@ param(
 )
 
 function Invoke-OrThrow {
-  param([string]$Cmd, [string]$Err = "Command failed")
-  $out = Invoke-Expression $Cmd 2>&1
-  if ($LASTEXITCODE -ne 0) { throw "$Err`n$out" }
-  return $out
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Cmd,
+        [string]$Err = "Command failed",
+        [string]$Activity = "Running command",
+        [int]$ProgressDelayMs = 200
+    )
+
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $spinner = @('|','/','-','\')
+    $i = 0
+    $job = Start-Job -ScriptBlock {
+        param($Cmd)
+        $output = Invoke-Expression $Cmd 2>&1
+        [pscustomobject]@{
+            Output   = $output
+            ExitCode = $LASTEXITCODE
+        }
+    } -ArgumentList $Cmd
+
+    while ($job.State -eq 'Running') {
+        $i = ($i + 1) % $spinner.Length
+        Write-Progress -Activity $Activity -Status ("{0}  elapsed {1:c}" -f $spinner[$i], $sw.Elapsed) -PercentComplete 50
+        Start-Sleep -Milliseconds $ProgressDelayMs
+    }
+
+    Write-Progress -Activity $Activity -Completed
+    $sw.Stop()
+
+    $result = Receive-Job $job -Keep
+    Remove-Job $job | Out-Null
+
+    if ($null -eq $result) {
+        throw ("{0}`nNo output. Final job state: {1}. Duration: {2:c}" -f $Err, $job.State, $sw.Elapsed)
+    }
+
+    if ($result.ExitCode -ne 0) {
+        $text = ($result.Output -join [Environment]::NewLine)
+        throw ("{0}`n{text}`nExitCode: {1}. Duration: {2:c}" -f $Err, $result.ExitCode, $sw.Elapsed)
+    }
+
+    Write-Host ("{0} completed in {1:c}" -f $Activity, $sw.Elapsed)
+    return $result.Output
 }
 
 $existing = (docker ps -a --format "{{.Names}}" | Where-Object { $_ -eq $ContainerName })
@@ -485,8 +525,6 @@ armonia
 arnaud
 arnold
 arthur
-arthur1
-arthur2
 arthurs
 artur
 arturo
@@ -8529,15 +8567,16 @@ DROP TABLE #people;
 
 PRINT 'Test data ready.';
 GO
-'@ | Set-Content -Encoding UTF8 $tmp.FullName
+'@ | Set-Content -Encoding Unicode $tmp.FullName
 
 Write-Host "Copying init script into container..."
-Invoke-OrThrow "docker cp $($tmp.FullName) `"$ContainerName`:/tmp/init.sql`"" "Failed to copy init script into container"
+Invoke-OrThrow "docker cp $($tmp.FullName) `"$ContainerName`:/tmp/init.sql`"" "Failed to copy init script into container" -Activity "Copy init.sql to container"
 
 Write-Host "Executing init script inside container..."
 $recreateFlag = if ($RecreateDb) { 1 } else { 0 }
+
 Invoke-OrThrow ("docker exec {0} /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P {1} -C -b -i /tmp/init.sql -v DBNAME=""{2}"" RECREATE={3} USERS={4} PRODUCTS={5} ORDERS={6}" -f `
-  $ContainerName, $SaPassword, $DbName, $recreateFlag, $Users, $Products, $Orders) "Failed to execute init script"
+  $ContainerName, $SaPassword, $DbName, $recreateFlag, $Users, $Products, $Orders) "Failed to execute init script" -Activity "Run init.sql with sqlcmd"
 
 Write-Host ""
 Write-Host "Database '$DbName' created and seeded successfully."

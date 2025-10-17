@@ -8728,6 +8728,48 @@ ORDER BY N;
 
 DROP TABLE #Status;
 
+IF OBJECT_ID('tempdb..#ProductsList') IS NOT NULL DROP TABLE #ProductsList;
+
+SELECT ROW_NUMBER() OVER (ORDER BY ProductID) AS rn,
+       ProductID,
+       Price AS BasePrice
+INTO #ProductsList
+FROM dbo.Products;
+
+DECLARE @ProductCnt BIGINT = (SELECT COUNT(*) FROM #ProductsList);
+
+INSERT INTO dbo.OrderItems (OrderID, ProductID, Quantity, UnitPrice)
+SELECT
+  o.OrderID,
+  p.ProductID,
+  ((CHECKSUM(@Seed*101, o.OrderID, items.item_seq) & 2147483647) % 5) + 1 AS Quantity,
+  CAST(
+    CASE
+      WHEN ROUND(p.BasePrice *
+                 (1.0 + (((CHECKSUM(@Seed*313, o.OrderID, items.item_seq, p.ProductID) & 2147483647) % 31) - 20) / 100.0),
+                 2) < 0.01
+        THEN 0.01
+      ELSE ROUND(p.BasePrice *
+                 (1.0 + (((CHECKSUM(@Seed*313, o.OrderID, items.item_seq, p.ProductID) & 2147483647) % 31) - 20) / 100.0),
+                 2)
+    END AS DECIMAL(10,2)
+  ) AS UnitPrice
+FROM dbo.Orders o WITH (READUNCOMMITTED)
+CROSS APPLY (
+  SELECT TOP ( (CHECKSUM(@Seed, o.OrderID) & 2147483647) % 10 + 1 )
+         ROW_NUMBER() OVER (ORDER BY n.N) AS item_seq
+  FROM dbo.Numbers n WITH (READUNCOMMITTED)
+  ORDER BY n.N
+) AS items
+CROSS APPLY (
+  SELECT rn = ((CHECKSUM(@Seed*17, o.OrderID, items.item_seq) & 2147483647) % @ProductCnt) + 1
+) pick
+JOIN #ProductsList p
+  ON p.rn = pick.rn
+ORDER BY o.OrderID, items.item_seq;
+
+DROP TABLE #ProductsList;
+
 DECLARE @NumberCount BIGINT, @UserCount BIGINT, @ProductCount BIGINT, @OrderCount BIGINT, @OrderItemCount BIGINT, @EventCount BIGINT,
 @PostCount BIGINT;
 

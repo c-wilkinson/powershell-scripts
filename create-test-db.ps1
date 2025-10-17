@@ -75,6 +75,7 @@ for ($i=1; $i -le $tries; $i++) {
 
 $tmp = New-TemporaryFile
 @'
+SET NOCOUNT ON;
 -- ============================================================
 -- TestLab: lightweight test DB for T-SQL exercises
 -- ============================================================
@@ -8691,6 +8692,42 @@ DROP TABLE #Qual;
 DROP TABLE #Variant;
 DROP TABLE #Cat;
 
+DECLARE @StartDate DATETIME2(0) = '2000-01-01T00:00:00';
+DECLARE @EndDate   DATETIME2(0) = SYSUTCDATETIME();
+DECLARE @Span FLOAT = DATEDIFF(SECOND, @StartDate, @EndDate) * 1.0;
+DECLARE @UserMin INT, @UserMax INT;
+SELECT @UserMin = MIN(UserID), @UserMax = MAX(UserID) FROM dbo.Users;
+
+IF @UserMin IS NULL
+BEGIN
+  RAISERROR('No users exist in dbo.Users. Populate users first.',16,1);
+  RETURN;
+END;
+
+IF OBJECT_ID('tempdb..#Status') IS NOT NULL DROP TABLE #Status;
+CREATE TABLE #Status(id INT IDENTITY(1,1), val NVARCHAR(20) NOT NULL);
+INSERT INTO #Status(val)
+VALUES (N'Pending'), (N'Processing'), (N'Shipped'),
+       (N'Delivered'), (N'Cancelled'), (N'Returned');
+
+DECLARE @StatusCnt INT = (SELECT COUNT(*) FROM #Status);
+
+INSERT INTO dbo.Orders (UserID, OrderDate, Status)
+SELECT TOP ($(ORDERS))
+  UserID = @UserMin + ((CHECKSUM(@Seed, N) & 2147483647) % (@UserMax - @UserMin + 1)),
+  OrderDate = DATEADD(SECOND,
+                      (CHECKSUM(@Seed*13, N) & 2147483647) % CAST(@Span AS BIGINT),
+                      @StartDate),
+  Status = (
+    SELECT val
+    FROM #Status
+    WHERE id = ((CHECKSUM(@Seed*29, N) & 2147483647) % @StatusCnt) + 1
+  )
+FROM dbo.Numbers
+ORDER BY N;
+
+DROP TABLE #Status;
+
 DECLARE @NumberCount BIGINT, @UserCount BIGINT, @ProductCount BIGINT, @OrderCount BIGINT, @OrderItemCount BIGINT, @EventCount BIGINT,
 @PostCount BIGINT;
 
@@ -8705,13 +8742,17 @@ SELECT @PostCount = COUNT(*) FROM dbo.Posts;
 DECLARE @Message NVARCHAR(MAX);
 
 SELECT @Message = CONCAT(
+CHAR(13), CHAR(10),
+'=================================================================',
+CHAR(13), CHAR(10),
 'dbo.Numbers row count [', @NumberCount, ']', CHAR(13), CHAR(10),
 'dbo.Users row count [', @UserCount, ']', CHAR(13), CHAR(10),
 'dbo.Products row count [', @ProductCount, ']', CHAR(13), CHAR(10),
 'dbo.Orders row count [', @OrderCount, ']', CHAR(13), CHAR(10),
 'dbo.OrderItems row count [', @OrderItemCount, ']', CHAR(13), CHAR(10),
 'dbo.Events row count [', @EventCount, ']', CHAR(13), CHAR(10),
-'dbo.Posts row count [', @PostCount, ']');
+'dbo.Posts row count [', @PostCount, ']', CHAR(13), CHAR(10),
+'=================================================================');
 
 PRINT @Message;
 

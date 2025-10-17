@@ -8565,6 +8565,156 @@ CROSS APPLY (
 
 DROP TABLE #people;
 
+DECLARE @Seed   BIGINT     = 8675309;
+
+IF OBJECT_ID('tempdb..#Adj')     IS NOT NULL DROP TABLE #Adj;
+IF OBJECT_ID('tempdb..#Core')    IS NOT NULL DROP TABLE #Core;
+IF OBJECT_ID('tempdb..#Qual')    IS NOT NULL DROP TABLE #Qual;
+IF OBJECT_ID('tempdb..#Variant') IS NOT NULL DROP TABLE #Variant;
+IF OBJECT_ID('tempdb..#Cat')     IS NOT NULL DROP TABLE #Cat;
+
+CREATE TABLE #Adj     (id INT IDENTITY(1,1) PRIMARY KEY, val NVARCHAR(32) NOT NULL);
+CREATE TABLE #Core    (id INT IDENTITY(1,1) PRIMARY KEY, val NVARCHAR(48) NOT NULL);
+CREATE TABLE #Qual    (id INT IDENTITY(1,1) PRIMARY KEY, val NVARCHAR(40) NOT NULL);
+CREATE TABLE #Variant (id INT IDENTITY(1,1) PRIMARY KEY, val NVARCHAR(32) NOT NULL);
+CREATE TABLE #Cat     (id INT IDENTITY(1,1) PRIMARY KEY, Category NVARCHAR(50) NOT NULL, MinPrice DECIMAL(10,2) NOT NULL, MaxPrice DECIMAL(10,2) NOT NULL);
+
+INSERT INTO #Adj(val) VALUES
+ (N'Ultra'),(N'Pro'),(N'Prime'),(N'Omni'),(N'Quantum'),(N'Nova'),(N'Neo'),
+ (N'Hyper'),(N'Sonic'),(N'Pure'),(N'Fusion'),(N'Core'),(N'Vision'),
+ (N'Zen'),(N'Pulse'),(N'Flux'),(N'Infinite'),(N'Precision'),(N'Next'),
+ (N'Aero'),(N'Carbon'),(N'Meta'),(N'Crystal'),(N'Polar'),(N'Arc');
+
+INSERT INTO #Core(val) VALUES
+ (N'Aether'),(N'Catalyst'),(N'Spectrum'),(N'Velocity'),(N'Nexus'),
+ (N'Horizon'),(N'Equinox'),(N'Paradox'),(N'Synergy'),(N'Vertex'),
+ (N'Ignite'),(N'Element'),(N'Frontier'),(N'Axis'),(N'Summit'),
+ (N'Orbit'),(N'Ascend'),(N'Eclipse'),(N'Radiance'),(N'Origin'),
+ (N'Endeavour'),(N'Shadow'),(N'Lumen'),(N'Obsidian'),(N'Momentum'),
+ (N'Zenith'),(N'Sentinel'),(N'Odyssey'),(N'Vector'),(N'Prism'),
+ (N'Vortex'),(N'Legacy'),(N'Justice'),(N'Tempest'),(N'Continuum'),
+ (N'Fluxion'),(N'Paragon'),(N'Aurora'),(N'Impulse'),(N'Resonance'),
+ (N'Serenity'),(N'Halo'),(N'Mirage'),(N'Unity'),(N'Stasis'),
+ (N'Infinity'),(N'Chronos'),(N'Pinnacle'),(N'Beacon'),(N'Arcadia'),
+ (N'Verve'),(N'Ember'),(N'Polar'),(N'Singularity'),(N'Oblique'),
+ (N'Cascade'),(N'Quasar'),(N'Pulsewave'),(N'Glyph'),(N'Cipher');
+
+INSERT INTO #Qual(val) VALUES
+ (N'Edge'),(N'Forge'),(N'Field'),(N'Core'),(N'Line'),(N'Shift'),(N'Phase'),
+ (N'Frame'),(N'Gate'),(N'Flow'),(N'Grid'),(N'Lift'),(N'Path'),
+ (N'Point'),(N'Prime'),(N'Range'),(N'Rise'),(N'Sequence'),(N'State'),(N'Wave'),
+ (N'Works'),(N'Lab'),(N'Loop'),(N'Node'),(N'Band'),(N'Arc'),(N'Form'),(N'Layer');
+
+INSERT INTO #Variant(val) VALUES
+ (N''),(N'Mini'),(N'Max'),(N'Plus'),(N'Mk II'),(N'XL'),(N'2025'),
+ (N'Edition'),(N'Alpha'),(N'Beta'),(N'Sigma'),(N'Omega'),(N'Evo'),
+ (N'One'),(N'Prime'),(N'Zero'),(N'Series X'),(N'V2');
+
+INSERT INTO #Cat(Category, MinPrice, MaxPrice) VALUES
+ (N'Electronics',        19.99, 1499.99),
+ (N'Home & Kitchen',      3.99,  399.99),
+ (N'Sports & Outdoors',   4.99,  299.99),
+ (N'Clothing',            5.99,  199.99),
+ (N'Beauty',              2.99,  129.99),
+ (N'Books & Stationery',  4.99,   49.99),
+ (N'Office',              1.99,  249.99),
+ (N'Automotive',          3.99,  499.99),
+ (N'Garden & DIY',        2.99,  499.99),
+ (N'Pet Supplies',        1.49,  199.99);
+
+DECLARE @AdjCnt     BIGINT = (SELECT COUNT(*) FROM #Adj);
+DECLARE @CoreCnt    BIGINT = (SELECT COUNT(*) FROM #Core);
+DECLARE @QualCnt    BIGINT = (SELECT COUNT(*) FROM #Qual);
+DECLARE @VariantCnt BIGINT = (SELECT COUNT(*) FROM #Variant);
+DECLARE @CatCnt     BIGINT = (SELECT COUNT(*) FROM #Cat);
+
+WITH Pick AS (
+  SELECT TOP ($(PRODUCTS))
+         N,
+         adjId   = ((@Seed*31  + N       ) % @AdjCnt    ) + 1,
+         coreId  = ((@Seed*53  + N*7     ) % @CoreCnt   ) + 1,
+         qualId  = ((@Seed*97  + N*11    ) % @QualCnt   ) + 1,
+         varId   = ((@Seed*193 + N*13    ) % @VariantCnt) + 1,
+         catId   = ((@Seed*389 + N*17    ) % @CatCnt    ) + 1,
+         useQual = CASE WHEN ( (CHECKSUM(@Seed, N) & 2147483647) % 10 ) < 7 THEN 1 ELSE 0 END
+  FROM dbo.Numbers
+  ORDER BY N
+),
+Named AS (
+  SELECT
+    p.N,
+    NameRaw =
+      CASE WHEN p.useQual = 1
+           THEN CONCAT(a.val, N' ', c.val, N' ', q.val,
+                       CASE WHEN v.val = N'' THEN N'' ELSE N' ' + v.val END)
+           ELSE CONCAT(a.val, N' ', c.val,
+                       CASE WHEN v.val = N'' THEN N'' ELSE N' ' + v.val END)
+      END,
+    cat.Category,
+    cat.MinPrice,
+    cat.MaxPrice,
+    rnd = (CHECKSUM(@Seed, p.N, a.val, c.val, v.val, cat.Category) & 2147483647) % 10000
+  FROM Pick p
+  JOIN #Adj     a  ON a.id  = p.adjId
+  JOIN #Core    c  ON c.id  = p.coreId
+  JOIN #Qual    q  ON q.id  = p.qualId
+  JOIN #Variant v  ON v.id  = p.varId
+  JOIN #Cat     cat ON cat.id = p.catId
+),
+Priced AS (
+  SELECT
+    Name      = LEFT(NameRaw, 100),
+    Category,
+    MinPrice, MaxPrice,
+    RawPrice  = MinPrice + (rnd / 10000.0) * (MaxPrice - MinPrice)
+  FROM Named
+)
+INSERT INTO dbo.Products(Name, Category, Price)
+SELECT
+  Name,
+  Category,
+  CAST(
+    CASE 
+      WHEN (MaxPrice - MinPrice) <= 5 THEN ROUND(RawPrice, 2)
+      ELSE CASE
+             WHEN (FLOOR(RawPrice) + 0.99) > MaxPrice THEN MaxPrice
+             WHEN (FLOOR(RawPrice) + 0.99) < MinPrice THEN MinPrice
+             ELSE FLOOR(RawPrice) + 0.99
+           END
+    END AS DECIMAL(10,2)
+  ) AS Price
+FROM Priced;
+
+DROP TABLE #Adj;
+DROP TABLE #Core;
+DROP TABLE #Qual;
+DROP TABLE #Variant;
+DROP TABLE #Cat;
+
+DECLARE @NumberCount BIGINT, @UserCount BIGINT, @ProductCount BIGINT, @OrderCount BIGINT, @OrderItemCount BIGINT, @EventCount BIGINT,
+@PostCount BIGINT;
+
+SELECT @NumberCount = COUNT(*) FROM dbo.Numbers;
+SELECT @UserCount = COUNT(*) FROM dbo.Users;
+SELECT @ProductCount = COUNT(*) FROM dbo.Products;
+SELECT @OrderCount = COUNT(*) FROM dbo.Orders;
+SELECT @OrderItemCount = COUNT(*) FROM dbo.OrderItems;
+SELECT @EventCount = COUNT(*) FROM dbo.Events;
+SELECT @PostCount = COUNT(*) FROM dbo.Posts;
+
+DECLARE @Message NVARCHAR(MAX);
+
+SELECT @Message = CONCAT(
+'dbo.Numbers row count [', @NumberCount, ']', CHAR(13), CHAR(10),
+'dbo.Users row count [', @UserCount, ']', CHAR(13), CHAR(10),
+'dbo.Products row count [', @ProductCount, ']', CHAR(13), CHAR(10),
+'dbo.Orders row count [', @OrderCount, ']', CHAR(13), CHAR(10),
+'dbo.OrderItems row count [', @OrderItemCount, ']', CHAR(13), CHAR(10),
+'dbo.Events row count [', @EventCount, ']', CHAR(13), CHAR(10),
+'dbo.Posts row count [', @PostCount, ']');
+
+PRINT @Message;
+
 PRINT 'Test data ready.';
 GO
 '@ | Set-Content -Encoding Unicode $tmp.FullName

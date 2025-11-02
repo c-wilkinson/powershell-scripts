@@ -1,0 +1,46 @@
+# VS Code / JetBrains / Visual Studio caches
+.vscode/
+.vscode-oss/
+.vscode-test/
+.idea/
+.vs/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local scratch / temp
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+*.orig
+
+# PowerShell publish/build artifacts
+*.nupkg
+*.snupkg
+nuget.exe
+Packages/
+Publish/
+out/
+
+# Pester test outputs
+TestResults/
+*.trx
+*.covxml
+.Pester* 
+.pester*
+
+# Transcripts & logs (if you use Start-Transcript or custom logs)
+Transcripts/
+*.transcript.txt
+
+# Local-only config & secrets
+# (keep your real configs as *.example.ps1 in the repo)
+*.local.ps1
+*.ps1.local
+*.secrets.*
+*.secret.*
+*.credentials.*

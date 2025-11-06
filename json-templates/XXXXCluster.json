@@ -1,0 +1,18 @@
+{
+  "Cluster": {
+    "Name": "XXXX-SQL-CLUSTER",
+    "Nodes": [
+      { "Name": "XXXX-SQL01", "Role": "Primary" },
+      { "Name": "XXXX-SQL02", "Role": "Secondary" }
+    ],
+    "FailoverMode": "Manual",
+    "IPAddress": "10.0.0.50"
+  },
+  "Spec": {
+    "Settings": {
+      "Port": 1433,
+      "MaxDop": 8,
+      "BackupPath": "C:\\Backups"
+    }
+  }
+}

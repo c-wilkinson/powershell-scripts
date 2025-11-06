@@ -1,0 +1,14 @@
+{
+  "Environment": "XXXX",
+  "AppName": "TemplateApp",
+  "Version": "1.0.0",
+  "Database": {
+    "Server": "XXXX-SQL",
+    "Name": "TemplateDB",
+    "Port": 1433
+  },
+  "Owner": {
+    "Team": "DatabaseOps",
+    "Contact": "dba@example.com"
+  }
+}

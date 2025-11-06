@@ -1,0 +1,19 @@
+{
+  "Agent": {
+    "Name": "XXXXAgent",
+    "Description": "SQL Server Agent service account",
+    "RunAs": {
+      "Account": "NT SERVICE\\SQLAgent$XXXX",
+      "CredentialType": "ManagedServiceAccount"
+    },
+    "Schedules": [
+      { "Job": "BackupDBs", "Enabled": true },
+      { "Job": "IndexRebuild", "Enabled": false }
+    ]
+  },
+  "Monitoring": {
+    "Enabled": true,
+    "Target": "Redgate Monitor",
+    "Endpoint": "https://monitoring.local/Redgate"
+  }
+}

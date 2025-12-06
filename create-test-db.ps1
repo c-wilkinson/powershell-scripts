@@ -1,5 +1,6 @@
 param(
-  [string]$ContainerName = "sql2022",
+  [string]$ContainerName = "sql-test",
+  [string]$SqlVersion = "2022",
   [string]$SaPassword    = "Pa55word",
   [string]$DbName        = "TestLab",
   [int]$Users            = 1000000,
@@ -7,6 +8,9 @@ param(
   [int]$Orders           = 2000000,
   [switch]$RecreateDb                # drops and recreates the DB
 )
+
+# Build correct docker image name dynamically
+$imageName = "mcr.microsoft.com/mssql/server:$SqlVersion-latest"
 
 function Invoke-OrThrow {
     [CmdletBinding()]
@@ -48,7 +52,7 @@ function Invoke-OrThrow {
 
     if ($result.ExitCode -ne 0) {
         $text = ($result.Output -join [Environment]::NewLine)
-        throw ("{0}`n{text}`nExitCode: {1}. Duration: {2:c}" -f $Err, $result.ExitCode, $sw.Elapsed)
+        throw ("{0}`n{1}`nExitCode: {2}. Duration: {3:c}" -f $Err, $text, $jobResult.ExitCode, $sw.Elapsed)
     }
 
     Write-Host ("{0} completed in {1:c}" -f $Activity, $sw.Elapsed)
@@ -58,7 +62,7 @@ function Invoke-OrThrow {
 $existing = (docker ps -a --format "{{.Names}}" | Where-Object { $_ -eq $ContainerName })
 if (-not $existing) {
   Write-Host "Starting new SQL Server container '$ContainerName'..."
-  Invoke-OrThrow "docker run -d --name $ContainerName -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=$SaPassword' -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest" "Failed to start container"
+  Invoke-OrThrow "docker run -d --name $ContainerName -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=$SaPassword' -p 1433:1433 $imageName" "Failed to start container"
 } elseif (-not (docker ps --format "{{.Names}}" | Where-Object { $_ -eq $ContainerName })) {
   Write-Host "Starting existing container '$ContainerName'..."
   Invoke-OrThrow "docker start $ContainerName" "Failed to start existing container"
@@ -68,9 +72,16 @@ Write-Host "Waiting for SQL Server to become ready..."
 $tries = 60
 for ($i=1; $i -le $tries; $i++) {
   $ok = docker exec $ContainerName /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $SaPassword -C -Q "SELECT 1" 2>$null
-  if ($LASTEXITCODE -eq 0) { Write-Host "SQL is ready."; break }
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host "SQL is ready."
+    # Give SQL a bit more time to finish starting other databases
+    Start-Sleep -Seconds 10
+    break
+  }
   Start-Sleep -Seconds 2
-  if ($i -eq $tries) { throw "SQL Server did not become ready in time." }
+  if ($i -eq $tries) { 
+    throw "SQL Server did not become ready in time." 
+  }
 }
 
 $tmp = New-TemporaryFile

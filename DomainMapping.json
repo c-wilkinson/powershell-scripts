@@ -1,0 +1,14 @@
+{
+  "Realms": [
+    { "Slug": "wayne",      "Trigram": "WAY" },
+    { "Slug": "acme",       "Trigram": "ACM" },
+    { "Slug": "soylent",    "Trigram": "SOY" },
+    { "Slug": "boarder",    "Trigram": "BRD" },
+    { "Slug": "enterprise", "Trigram": "ENT" }
+  ],
+  "Environments": [
+    { "Slug": "dev",  "Trigram": "DEV" },
+    { "Slug": "e2e",  "Trigram": "E2E" },
+    { "Slug": "live", "Trigram": "LIV" }
+  ]
+}

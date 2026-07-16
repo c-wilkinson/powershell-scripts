@@ -8,10 +8,16 @@ Some are polished, some are quick hacks - all are here because they proved usefu
 
 | Script                        | Description |
 |------------------------------|-------------|
-| [`create-test-db.ps1`](create-test-db.ps1)        | Automates setup of a SQL Server Docker container, waits for readiness, and runs an init script to create a schema with users, products, and orders tables plus supporting indexes, views, and procs. |
-| [`update-json-template.ps1`](update-json-template.ps1) | Updates a single JSON template with environment-specific values and optional nested property changes. Supports `-Verbose` and `-WhatIf` for safe pipeline use. |
-| [`validate-jsondomains.ps1`](validate-jsondomains.ps1) | Scans JSON files to ensure all domains use the correct `realm-env` format based on file naming conventions. Supports both `user@realm-env.com` and `realm-env\user` formats. Generates Pass/Fail/Warning results with detailed mismatches. |
-| [`generate-testjsonfiles.ps1`](generate-testjsonfiles.ps1) | Creates sample JSON files for automated validation. Randomly mixes realms, environments, login formats, and expected validity to support testing the validator or CI pipelines. Includes metadata so expected vs actual validation results can be compared. |
+| [`Restart-SqlHost.ps1`](Restart-SqlHost.ps1) | POC: Safely restarts a Windows host running SQL Server by discovering local instances, failing over locally primary Availability Groups to a healthy replica, preferring Region A, verifying every failover, and restarting only when the host no longer owns any primary Availability Groups. |
+| [`create-test-db.ps1`](create-test-db.ps1) | Creates or starts a SQL Server Docker container and builds a configurable test database containing users, products, orders, posts, events, indexes, views, functions, and stored procedures. |
+| [`update-json-templates.ps1`](update-json-templates.ps1) | Updates a JSON template with environment-specific values and optional nested property changes. Supports dotted paths, array indexes, `-Verbose`, and `-WhatIf`. |
+| [`validate-jsondomains.ps1`](validate-jsondomains.ps1) | Scans JSON files and checks that domains use the expected `realm-env` format based on the filename and configured domain mapping. |
+| [`generate-testjsonfiles.ps1`](generate-testjsonfiles.ps1) | Generates sample JSON files containing a mixture of valid and invalid domains for testing `validate-jsondomains.ps1` and related CI pipelines. |
 
----
-These scripts are provided as-is. There's no hand-holding. If something here helps you, feel free to adapt and reuse however you like.
+## Licence
+
+This repository is released under [The Unlicense](LICENSE).
+
+## Disclaimer
+
+These scripts are provided as-is, without warranty. There's no hand-holding. If something here helps you, feel free to adapt and reuse however you like. Review and test them in a safe environment before using them against anything important.
